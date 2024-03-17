@@ -2,12 +2,10 @@ package com.romeo.springboot.rest.api.controller;
 
 import com.romeo.springboot.rest.api.dto.EmployeeDTO;
 import com.romeo.springboot.rest.api.exception.ResourceNotFoundException;
-import com.romeo.springboot.rest.api.model.Employee;
 import com.romeo.springboot.rest.api.service.EmployeeService;
-import com.romeo.springboot.rest.api.service.SequenceGeneratorService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.MediaType;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -19,64 +17,47 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.validation.Valid;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
+
+@Slf4j
+@RequiredArgsConstructor
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
-@RequestMapping(value = "/api", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(value = "/api/employees")
 public class EmployeeController {
 
     private final EmployeeService employeeService;
-    private final SequenceGeneratorService sequenceGeneratorService;
 
-    @Autowired
-    public EmployeeController(EmployeeService employeeService,
-                              SequenceGeneratorService sequenceGeneratorService) {
-        this.employeeService = employeeService;
-        this.sequenceGeneratorService = sequenceGeneratorService;
+    @GetMapping
+    public ResponseEntity<List<EmployeeDTO>> getAllEmployees() {
+        return ResponseEntity.ok(employeeService.getAllEmployees());
     }
 
-    @GetMapping("/employees")
-    public HttpEntity getAllEmployees() {
-        return ResponseEntity.ok(employeeService.getEmployess());
-    }
-
-    @GetMapping("/employees/{id}")
-    public HttpEntity getEmployeeById(@PathVariable(value = "id") Long id)
+    @GetMapping("/{id}")
+    public ResponseEntity<EmployeeDTO> getEmployee(@PathVariable(value = "id") final Long id)
             throws ResourceNotFoundException {
-        Employee employee = employeeService.findEmployee(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found for this id :: " + id));
-        return ResponseEntity.ok().body(employee);
+        log.info("Employee id : '{}'", id);
+
+        return ResponseEntity.ok(employeeService.findEmployee(id));
     }
 
-    @PostMapping(value = "/employees", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public HttpEntity createEmployee(@Valid @RequestBody EmployeeDTO employeeDTO) {
-        employeeDTO.setEmployeeId(sequenceGeneratorService.generateSequence(Employee.SEQUENCE_NAME));
+    @PostMapping
+    public ResponseEntity<EmployeeDTO> createEmployee(@Valid @RequestBody EmployeeDTO employeeDTO) {
+        log.info("Employee is: '{}'", employeeDTO);
         return ResponseEntity.ok(employeeService.addEmployee(employeeDTO));
     }
 
-    @PutMapping(value = "/employees/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public HttpEntity updateEmployee(@PathVariable(value = "id") Long id,
-                                     @Valid @RequestBody EmployeeDTO employeeDTO) throws ResourceNotFoundException {
-        return employeeService.findEmployee(id)
-                .map(employee -> {
-                    employeeService.updateEmployee(id, employeeDTO);
-                    return ResponseEntity.noContent().build();
-                })
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found for this id :: " + id));
+    @PutMapping(value = "/{id}")
+    public ResponseEntity<EmployeeDTO> updateEmployee(@PathVariable(value = "id") Long id,
+                                                      @Valid @RequestBody EmployeeDTO employeeDTO)
+            throws ResourceNotFoundException {
+
+        return ResponseEntity.ok(employeeService.updateEmployee(id, employeeDTO));
     }
 
-    @DeleteMapping("/employees/{id}")
-    public Map<String, Boolean> deleteEmployee(@PathVariable(value = "id") Long id)
-            throws ResourceNotFoundException {
-        Employee employee = employeeService.findEmployee(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Employee not found for this id :: " + id));
-
-        employeeService.deleteEmployee(employee);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("deleted", Boolean.TRUE);
-        return response;
+    @DeleteMapping("/{id}")
+    public void deleteEmployee(@PathVariable(value = "id") final Long id) {
+        employeeService.deleteEmployee(id);
     }
 }
